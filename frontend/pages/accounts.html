@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Accounts - Twilio Dashboard</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/mdb-ui-kit/6.4.0/mdb.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="../css/style.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+    <div id="navbar-placeholder"></div>
+
+    <div class="container my-5">
+        <!-- Summary Card -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <h6 class="text-muted">Total Accounts</h6>
+                            <h2 id="totalAccounts">0</h2>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <h6 class="text-muted">Total Balance</h6>
+                            <h2 id="totalBalance">$0</h2>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <h6 class="text-muted">Active Accounts</h6>
+                            <h2 id="activeAccounts">0</h2>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <h6 class="text-muted">Average Balance</h6>
+                            <h2 id="avgBalance">$0</h2>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Accounts List -->
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-users me-2"></i>Twilio Accounts</h5>
+                <div class="btn-group">
+                    <button class="btn btn-light btn-sm" onclick="showAddAccountModal()">
+                        <i class="fas fa-plus-circle me-2"></i>Add Account
+                    </button>
+                    <button id="refreshAllBtn" class="btn btn-light btn-sm ms-2" onclick="refreshAllAccounts()">
+                        <i class="fas fa-sync"></i> Refresh All
+                    </button>
+                    <button class="btn btn-light btn-sm ms-2" onclick="exportAccounts('csv')">
+                        <i class="fas fa-file-csv me-2"></i>Export CSV
+                    </button>
+                    <button class="btn btn-light btn-sm ms-2" onclick="exportAccounts('json')">
+                        <i class="fas fa-file-code me-2"></i>Export JSON
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <!-- Filters -->
+                <div class="row mb-4">
+                    <div class="col-md-3">
+                        <select class="form-select" id="statusFilter">
+                            <option value="">All Status</option>
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <select class="form-select" id="typeFilter">
+                            <option value="">All Types</option>
+                            <option value="Trial">Trial</option>
+                            <option value="Paid">Paid</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <input type="number" class="form-control" id="balanceFilter" placeholder="Min Balance">
+                    </div>
+                    <div class="col-md-3">
+                        <button class="btn btn-primary w-100" onclick="applyFilters()">
+                            Apply Filters
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Accounts Table -->
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>
+                                    <input type="checkbox" class="form-check-input" id="selectAll" onclick="toggleSelectAll()">
+                                </th>
+                                <th>Phone Number</th>
+                                <th>SID</th>
+                                <th>Type</th>
+                                <th>Status</th>
+                                <th>Balance</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="accountsList"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Account Details Modal -->
+        <div class="modal fade" id="accountModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Account Details</h5>
+                        <button type="button" class="btn-close" data-mdb-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div id="accountDetails"></div>
+                        
+                        <!-- Usage Charts -->
+                        <div class="mt-4">
+                            <h6>Monthly Usage</h6>
+                            <canvas id="usageChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add Account Modal -->
+        <div id="addAccountModalPlaceholder"></div>
+
+        <!-- Toast -->
+        <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+            <div id="toast" class="toast" role="alert" aria-atomic="true">
+                <div class="toast-header">
+                    <strong class="me-auto">Notification</strong>
+                    <button type="button" class="btn-close" data-mdb-dismiss="toast"></button>
+                </div>
+                <div class="toast-body" id="toastMessage"></div>
+            </div>
+        </div>
+    </div>
+
+    <footer id="footer-placeholder"></footer>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mdb-ui-kit/6.4.0/mdb.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="../js/accounts.js"></script>
+</body>
+</html>

@@ -1,0 +1,49 @@
+<div class="modal fade" id="addAccountModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-plus-circle me-2"></i>Add New Account</h5>
+                <button type="button" class="btn-close" data-mdb-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addAccountForm">
+                    <div class="form-outline mb-4">
+                        <input type="text" id="accountSid" name="sid" class="form-control" required />
+                        <label class="form-label" for="accountSid">Account SID</label>
+                    </div>
+
+                    <div class="form-outline mb-4">
+                        <input type="text" id="accountToken" name="token" class="form-control" required />
+                        <label class="form-label" for="accountToken">Auth Token</label>
+                    </div>
+
+                    <div class="form-outline mb-4">
+                        <input type="tel" id="accountNumber" name="number" class="form-control" required />
+                        <label class="form-label" for="accountNumber">Phone Number (with +)</label>
+                    </div>
+
+                    <div class="form-outline mb-4">
+                        <label class="form-label" for="accountType">Account Type</label>
+                        <select class="form-select" id="accountType" name="type">
+                            <option value="Trial">Trial</option>
+                            <option value="Paid">Paid</option>
+                        </select>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <small>
+                            <i class="fas fa-info-circle me-2"></i>
+                            The credentials will be verified with Twilio before adding the account.
+                        </small>
+                    </div>
+
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-plus-circle me-2"></i>Add Account
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>  
