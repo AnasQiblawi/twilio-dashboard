@@ -110,7 +110,7 @@ async function showAccountDetails(sid) {
     const modal = new mdb.Modal(modalElement);
     modal.show();
 
-    // // Create usage chart if needed
+    // // Create usage chart Example if needed
     // createUsageChart({
     //     labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
     //     values: [65, 59, 80, 81, 56, 55]
