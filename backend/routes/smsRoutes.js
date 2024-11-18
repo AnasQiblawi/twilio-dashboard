@@ -3,10 +3,15 @@ const router = express.Router();
 const twilio = require('twilio');
 const twilioAccounts = require('../config/twilioConfig');
 
-// Initialize Twilio clients
-const twilioClients = twilioAccounts.map(account => 
-    twilio(account.sid, account.token)
-);
+// Initialize Twilio clients with support for both auth types
+const twilioClients = twilioAccounts.map(account => {
+    if (account.apiKey && account.apiSecret) {
+        return twilio(account.apiKey, account.apiSecret, { 
+            accountSid: account.sid 
+        });
+    }
+    return twilio(account.sid, account.token);
+});
 
 // Get all accounts
 router.get('/accounts', (req, res) => {
@@ -98,50 +103,53 @@ router.put('/accounts/:sid', async (req, res) => {
 });
 
 // Refresh all accounts
-router.post('/accounts/refresh-all', async (req, res) => {
+router.post('/accounts', async (req, res) => {
     try {
-        const refreshPromises = twilioAccounts.map(async (account) => {
-            try {
-                const client = twilio(account.sid, account.token);
-                
-                // Get account info and balance in parallel
-                const [twilioAccount, balance] = await Promise.all([
-                    client.api.accounts(account.sid).fetch(),
-                    client.balance.fetch()
-                ]);
+        const { sid, token, apiKey, apiSecret, number, type } = req.body;
 
-                // Update local account info
-                account.status = twilioAccount.status;
-                account.balance = parseFloat(balance.balance);
-                account.dateUpdated = new Date().toISOString();
+        if (!sid || (!token && (!apiKey || !apiSecret)) || !number) {
+            return res.status(400).json({
+                success: false,
+                error: 'Account SID, credentials (Token or API Key+Secret), and Phone Number are required'
+            });
+        }
 
-                return {
-                    success: true,
-                    account: {
-                        sid: account.sid,
-                        number: account.number,
-                        balance: account.balance,
-                        type: account.type,
-                        status: account.status,
-                        dateUpdated: account.dateUpdated
-                    }
-                };
-            } catch (error) {
-                return {
-                    success: false,
-                    sid: account.sid,
-                    error: error.message
-                };
-            }
+        // Create client based on provided credentials
+        const client = apiKey && apiSecret ? 
+            twilio(apiKey, apiSecret, { accountSid: sid }) :
+            twilio(sid, token);
+
+        // Verify credentials
+        const twilioAccount = await client.api.accounts(sid).fetch();
+        const balance = await client.balance.fetch();
+
+        const newAccount = {
+            sid,
+            token, // Store if provided
+            apiKey, // Store if provided
+            apiSecret, // Store if provided
+            number,
+            type: type || 'Trial',
+            status: twilioAccount.status,
+            balance: parseFloat(balance.balance),
+            dateAdded: new Date().toISOString(),
+            dateUpdated: new Date().toISOString()
+        };
+
+        twilioAccounts.push(newAccount);
+        twilioClients.push(client);
+
+        // Return safe version without credentials
+        const safeAccount = { ...newAccount };
+        delete safeAccount.token;
+        delete safeAccount.apiSecret;
+
+        res.status(201).json({
+            success: true,
+            account: safeAccount
         });
-
-        const results = await Promise.all(refreshPromises);
-        res.json(results);
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            error: error.message
-        });
+        handleTwilioError(error, res);
     }
 });
 
@@ -260,62 +268,142 @@ router.get('/accounts/:sid/usage', async (req, res) => {
     }
 });
 
+// Get message status
+router.get('/messages/:sid', async (req, res) => {
+    try {
+        const { sid } = req.params;
+        const { accountIndex = 0 } = req.query;
+        
+        const client = twilioClients[accountIndex];
+        if (!client) {
+            return res.status(400).json({
+                success: false,
+                error: 'Invalid account index'
+            });
+        }
+
+        const message = await client.messages(sid).fetch();
+        
+        res.json({
+            success: true,
+            message: {
+                sid: message.sid,
+                status: message.status,
+                errorCode: message.errorCode,
+                errorMessage: message.errorMessage,
+                direction: message.direction,
+                dateSent: message.dateSent,
+                price: message.price,
+                priceUnit: message.priceUnit
+            }
+        });
+    } catch (error) {
+        handleTwilioError(error, res);
+    }
+});
+
+// Delete message
+router.delete('/messages/:sid', async (req, res) => {
+    try {
+        const { sid } = req.params;
+        const { accountIndex = 0 } = req.query;
+        
+        const client = twilioClients[accountIndex];
+        if (!client) {
+            return res.status(400).json({
+                success: false,
+                error: 'Invalid account index'
+            });
+        }
+
+        await client.messages(sid).remove();
+        
+        res.status(204).send();  // Use 204 for successful deletion
+    } catch (error) {
+        handleTwilioError(error, res);
+    }
+});
+
 // Add this to your existing smsRoutes.js
+// Add this error handling middleware
+const handleTwilioError = (error, res) => {
+    switch (error.status) {
+        case 401:
+            return res.status(401).json({
+                success: false,
+                error: 'Invalid authentication credentials'
+            });
+        case 404:
+            return res.status(404).json({
+                success: false,
+                error: 'Resource not found'
+            });
+        case 429:
+            return res.status(429).json({
+                success: false,
+                error: 'Too many requests - please slow down your request rate'
+            });
+        default:
+            return res.status(error.status || 500).json({
+                success: false,
+                error: error.message
+            });
+    }
+};
 
 // Send SMS
 router.post('/send', async (req, res) => {
     try {
         const { to, message, accountIndex } = req.body;
 
-        // Validate required fields
-        if (!to || !message) {
+        if (!to || !message) {  // Updated check
             return res.status(400).json({
                 success: false,
                 error: 'Recipient number and message are required'
             });
         }
 
-        // Select Twilio client
-        let client;
-        if (accountIndex !== undefined && twilioClients[accountIndex]) {
-            client = twilioClients[accountIndex];
-        } else {
-            // Randomly select a client if no specific account is chosen
-            const randomIndex = Math.floor(Math.random() * twilioClients.length);
-            client = twilioClients[randomIndex];
-        }
+        const selectedAccount = accountIndex !== undefined ?
+            twilioAccounts[accountIndex] :
+            twilioAccounts[Math.floor(Math.random() * twilioAccounts.length)];
 
-        if (!client) {
+        if (!selectedAccount) {
             return res.status(400).json({
                 success: false,
                 error: 'No valid Twilio account available'
             });
         }
 
-        // Send message
-        const result = await client.messages.create({
-            body: message,
+        const client = twilio(selectedAccount.sid, selectedAccount.token);
+
+        const messageClient = await client.messages.create({
+            body: message,  // Use message here
             to: to,
-            from: twilioAccounts[accountIndex || 0].number // Use the corresponding account's number
+            from: selectedAccount.number,
+            // Add optional message tags as shown in documentation
+            tags: {
+                campaign_name: req.body.campaignName,
+                message_type: req.body.messageType
+            }
         });
 
-        res.json({
+        res.status(201).json({  // Use 201 for resource creation
             success: true,
             message: {
-                sid: result.sid,
-                status: result.status,
-                to: result.to,
-                from: result.from,
-                body: result.body,
-                dateSent: result.dateCreated
+                sid: messageClient.sid,
+                status: messageClient.status,
+                to: messageClient.to,
+                from: messageClient.from,
+                body: messageClient.body,
+                dateSent: messageClient.dateCreated,
+                tags: messageClient.tags,
+                price: messageClient.price,
+                priceUnit: messageClient.price_unit
             }
         });
 
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            error: error.message
-        });
+        handleTwilioError(error, res);
     }
 });
 

@@ -33,3 +33,68 @@
 .alert-info {
     margin: 1rem 0;
 }
+
+
+/* Additional styles to add to style.css */
+.message-history {
+    max-height: 400px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0,0,0,0.2) transparent;
+}
+
+.message-history::-webkit-scrollbar {
+    width: 6px;
+}
+
+.message-history::-webkit-scrollbar-thumb {
+    background-color: rgba(0,0,0,0.2);
+    border-radius: 3px;
+}
+
+.form-select {
+    height: 38px;
+    border-radius: 4px;
+}
+
+.char-count {
+    position: absolute;
+    right: 12px;
+    bottom: 8px;
+    font-size: 0.8rem;
+    color: #6c757d;
+}
+
+.badge {
+    font-size: 0.8em;
+    padding: 0.4em 0.6em;
+}
+
+.alert {
+    border-left: 4px solid;
+}
+
+.alert-info {
+    border-left-color: #0dcaf0;
+}
+
+.alert-success {
+    border-left-color: #198754;
+}
+
+.alert-danger {
+    border-left-color: #dc3545;
+}
+
+.toast {
+    min-width: 200px;
+}
+
+.btn-close:focus {
+    box-shadow: none;
+}
+
+.form-outline .form-control:focus {
+    border-color: #1266F1;
+    box-shadow: 0 0 0 0.2rem rgba(18, 102, 241, 0.25);
+}

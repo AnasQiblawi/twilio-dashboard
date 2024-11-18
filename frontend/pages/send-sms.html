@@ -3,51 +3,81 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Send SMS - Twilio Dashboard</title>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/mdb-ui-kit/6.4.0/mdb.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <link href="../css/style.css" rel="stylesheet">
+    <title>Send SMS - Twilio Manager</title>
+    
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" rel="stylesheet" />
+    <!-- MDB -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/mdb-ui-kit/6.4.0/mdb.min.css" rel="stylesheet" />
+    <!-- Custom CSS -->
+    <link href="../css/style.css" rel="stylesheet" />
 </head>
-<body class="bg-light">
+<body>
+    <!-- Navbar placeholder -->
     <div id="navbar-placeholder"></div>
 
+    <!-- Main container -->
     <div class="container my-5">
+        <!-- Send SMS Card -->
         <div class="card shadow-sm">
-            <div class="card-header bg-primary text-white">
-                <h5 class="mb-0"><i class="fas fa-paper-plane me-2"></i>Send SMS</h5>
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0" id="send-sms">Send SMS</h5>
+                <span class="badge bg-light text-primary" id="accountBalance"></span>
             </div>
+
             <div class="card-body">
                 <form id="smsForm">
-                    <div class="row">
+                    <div class="row mb-4">
+                        <!-- Recipient Number -->
                         <div class="col-md-6">
-                            <div class="form-outline mb-4">
-                                <input type="tel" id="to" name="to" class="form-control" required />
-                                <label class="form-label" for="to">Recipient Number (with country code)</label>
+                            <div class="form-outline">
+                                <input type="text" id="to" name="to" class="form-control" 
+                                       required pattern="^\+[1-9]\d{1,14}$"/>
+                                <label class="form-label" for="to">Recipient Number (E.164 format: +1234567890)</label>
+                                <div class="invalid-feedback">
+                                    Please enter a valid phone number in E.164 format (e.g., +1234567890)
+                                </div>
                             </div>
                         </div>
+
+                        <!-- Account Selection -->
                         <div class="col-md-6">
-                            <select class="form-select mb-4" name="accountIndex" id="accountSelect">
-                                <option value="">Random Account (Default)</option>
-                            </select>
+                            <div class="form-group">
+                                <select id="accountSelect" name="accountIndex" class="form-select">
+                                    <option value="">Random Account (Default)</option>
+                                </select>
+                                <small class="text-muted">Selected account will be used to send the message</small>
+                            </div>
                         </div>
                     </div>
 
+                    <!-- Message Area -->
                     <div class="form-outline mb-4">
-                        <textarea class="form-control" id="message" name="message" rows="4" required></textarea>
+                        <textarea id="message" name="message" class="form-control" 
+                                  required rows="4" maxlength="1600"></textarea>
                         <label class="form-label" for="message">Message</label>
+                        <small class="text-muted position-absolute end-0 bottom-0 me-3 mb-2" id="charCount">
+                            0/1600 characters
+                        </small>
                     </div>
 
-                    <div class="row">
+                    <!-- Template and Submit -->
+                    <div class="row align-items-center">
                         <div class="col-md-6">
-                            <select class="form-select mb-4" id="template" onchange="window.handleTemplate()">
-                                <option value="">Select Template</option>
-                                <option value="Hello! This is a test message.">Default Greeting</option>
-                                <option value="Your verification code is: ">Verification Code</option>
-                                <option value="Thank you for your purchase!">Purchase Thanks</option>
-                            </select>
+                            <div class="form-group">
+                                <select id="template" class="form-select" onchange="handleTemplate()">
+                                    <option value="">Select Template</option>
+                                    <option value="Hello! This is a test message.">Default Greeting</option>
+                                    <option value="Your verification code is: {code}">Verification Code</option>
+                                    <option value="Thank you for your purchase! Order #{order}">Purchase Thanks</option>
+                                </select>
+                            </div>
                         </div>
-                        <div class="col-md-6">
-                            <button type="submit" class="btn btn-primary w-100">
+                        
+                        <div class="col-md-6 text-end">
+                            <button type="submit" class="btn btn-primary">
                                 <i class="fas fa-paper-plane me-2"></i>Send Message
                             </button>
                         </div>
@@ -56,31 +86,70 @@
             </div>
         </div>
 
-        <!-- Recent Messages -->
-        <div class="card mt-4">
-            <div class="card-header bg-primary text-white">
-                <h5 class="mb-0"><i class="fas fa-clock me-2"></i>Recent Messages</h5>
+        <!-- Recent Messages Card -->
+        <div class="card mt-4 shadow-sm">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0" id="recent-messages">Recent Messages</h5>
+                <button class="btn btn-sm btn-light" onclick="clearHistory()">
+                    <i class="fas fa-trash me-1"></i>Clear
+                </button>
             </div>
+
             <div class="card-body">
-                <div id="recentMessages" class="message-history"></div>
+                <div id="recentMessages" class="message-history">
+                    <!-- Messages will be dynamically inserted here -->
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- Toast -->
+    <!-- Toast Notification -->
     <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
-        <div id="toast" class="toast" role="alert" aria-atomic="true">
+        <div id="toast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
             <div class="toast-header">
+                <i class="fas fa-info-circle me-2"></i>
                 <strong class="me-auto">Notification</strong>
-                <button type="button" class="btn-close" data-mdb-dismiss="toast"></button>
+                <button type="button" class="btn-close" data-mdb-dismiss="toast" aria-label="Close"></button>
             </div>
-            <div class="toast-body" id="toastMessage"></div>
+            <div id="toastMessage" class="toast-body"></div>
         </div>
     </div>
 
-    <footer id="footer-placeholder"></footer>
+    <!-- Loading Spinner Modal -->
+    <div class="modal fade" id="loadingModal" tabindex="-1" aria-hidden="true" data-mdb-backdrop="static">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-body text-center py-4">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <p class="mt-3 mb-0">Sending message...</p>
+                </div>
+            </div>
+        </div>
+    </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/mdb-ui-kit/6.4.0/mdb.min.js"></script>
+    <!-- Footer placeholder -->
+    <div id="footer-placeholder"></div>
+
+    <!-- MDB -->
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mdb-ui-kit/6.4.0/mdb.min.js"></script>
+    <!-- Custom JS -->
     <script src="../js/send-sms.js"></script>
+
+    <!-- Template for message history item -->
+    <template id="messageTemplate">
+        <div class="alert alert-info mb-3 position-relative">
+            <div class="d-flex justify-content-between">
+                <div>
+                    <strong>To:</strong> <span class="message-to"></span><br>
+                    <strong>From:</strong> <span class="message-from"></span><br>
+                    <strong>Status:</strong> 
+                    <span class="message-status badge"></span><br>
+                    <strong>Message:</strong> <span class="message-body"></span><br>
+                    <small class="text-muted message-date"></small>
+                </div>
+                <div class="message-price"></div>
+            </div>
+        </div>
+    </template>
 </body>
 </html>
